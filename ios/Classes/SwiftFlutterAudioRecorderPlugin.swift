@@ -13,24 +13,24 @@ public class SwiftFlutterAudioRecorderPlugin: NSObject, FlutterPlugin, AVAudioRe
     var startTime: Date!
     var settings: [String:Int]!
     var audioRecorder: AVAudioRecorder!
-    
+
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(name: "flutter_audio_recorder", binaryMessenger: registrar.messenger())
         let instance = SwiftFlutterAudioRecorderPlugin()
         registrar.addMethodCallDelegate(instance, channel: channel)
     }
-    
+
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
         switch call.method {
         case "current":
             print("current")
-            
+
             if audioRecorder == nil {
                 result(nil)
             } else {
                 let dic = call.arguments as! [String : Any]
                 channel = dic["channel"] as? Int ?? 0
-                
+
                 audioRecorder.updateMeters()
                 let duration = Int(audioRecorder.currentTime * 1000)
                 var recordingResult = [String : Any]()
@@ -45,7 +45,7 @@ public class SwiftFlutterAudioRecorderPlugin: NSObject, FlutterPlugin, AVAudioRe
             }
         case "init":
             print("init")
-            
+
             let dic = call.arguments as! [String : Any]
             mExtension = dic["extension"] as? String ?? ""
             mPath = dic["path"] as? String ?? ""
@@ -57,14 +57,14 @@ public class SwiftFlutterAudioRecorderPlugin: NSObject, FlutterPlugin, AVAudioRe
                 mPath = documentsPath + "/" + String(Int(startTime.timeIntervalSince1970)) + ".m4a"
                 print("path: " + mPath)
             }
-            
+
             settings = [
                 AVFormatIDKey: getOutputFormatFromString(mExtension),
                 AVSampleRateKey: mSampleRate,
                 AVNumberOfChannelsKey: 1,
                 AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
             ]
-            
+
             do {
                 #if swift(>=4.2)
                 try AVAudioSession.sharedInstance().setCategory(AVAudioSession.Category.playAndRecord, options: AVAudioSession.CategoryOptions.defaultToSpeaker)
@@ -72,6 +72,11 @@ public class SwiftFlutterAudioRecorderPlugin: NSObject, FlutterPlugin, AVAudioRe
                 try AVAudioSession.sharedInstance().setCategory(AVAudioSessionCategoryPlayAndRecord, with: AVAudioSessionCategoryOptions.defaultToSpeaker)
                 #endif
                 try AVAudioSession.sharedInstance().setActive(true)
+
+                if let inputs = session.availableInputs {
+                  print("inputs \(inputs)")
+                }
+
                 audioRecorder = try AVAudioRecorder(url: URL(string: mPath)!, settings: settings)
                 audioRecorder.delegate = self
                 audioRecorder.isMeteringEnabled = true
@@ -86,7 +91,7 @@ public class SwiftFlutterAudioRecorderPlugin: NSObject, FlutterPlugin, AVAudioRe
                 recordingResult["averagePower"] = 0
                 recordingResult["isMeteringEnabled"] = audioRecorder.isMeteringEnabled
                 recordingResult["status"] = status
-                
+
                 result(recordingResult)
             } catch {
                 print("fail")
@@ -94,17 +99,17 @@ public class SwiftFlutterAudioRecorderPlugin: NSObject, FlutterPlugin, AVAudioRe
             }
         case "start":
             print("start")
-            
+
             if status == "initialized" {
                 audioRecorder.record()
                 status = "recording"
             }
-            
+
             result(nil)
-            
+
         case "stop":
             print("stop")
-            
+
             if audioRecorder == nil || status == "unset" {
                 result(nil)
             } else {
@@ -127,29 +132,29 @@ public class SwiftFlutterAudioRecorderPlugin: NSObject, FlutterPlugin, AVAudioRe
             }
         case "pause":
             print("pause")
-            
+
             if audioRecorder == nil {
                 result(nil)
             }
-            
+
             if status == "recording" {
                 audioRecorder.pause()
                 status = "paused"
             }
-            
+
             result(nil)
         case "resume":
             print("resume")
-        
+
             if audioRecorder == nil {
                 result(nil)
             }
-            
+
             if status == "paused" {
                 audioRecorder.record()
                 status = "recording"
             }
-            
+
             result(nil)
         case "hasPermissions":
             print("hasPermissions")
@@ -159,7 +164,7 @@ public class SwiftFlutterAudioRecorderPlugin: NSObject, FlutterPlugin, AVAudioRe
             #else
             permission = AVAudioSession.sharedInstance().recordPermission()
             #endif
-            
+
             switch permission {
             case .granted:
                 print("granted")
@@ -196,7 +201,7 @@ public class SwiftFlutterAudioRecorderPlugin: NSObject, FlutterPlugin, AVAudioRe
             result(FlutterMethodNotImplemented)
         }
     }
-    
+
     // developer.apple.com/documentation/coreaudiotypes/coreaudiotype_constants/1572096-audio_data_format_identifiers
     func getOutputFormatFromString(_ format : String) -> Int {
         switch format {
