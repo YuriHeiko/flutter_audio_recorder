@@ -73,7 +73,7 @@ public class SwiftFlutterAudioRecorderPlugin: NSObject, FlutterPlugin, AVAudioRe
                 #endif
                 try AVAudioSession.sharedInstance().setActive(true)
 
-                if let inputs = session.availableInputs {
+                if let inputs = AVAudioSession.sharedInstance().availableInputs {
                   print("inputs \(inputs)")
                 }
 
